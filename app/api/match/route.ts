@@ -115,6 +115,8 @@ Return exactly ${numMatches || 4} coach recommendations, ordered by fit (best fi
       return {
         ...rec,
         coach: coach ? {
+          id: coach.id,
+          name: coach.name,
           photo_url: coach.photo_url,
           headline: coach.headline,
           gender: coach.gender,
@@ -122,7 +124,8 @@ Return exactly ${numMatches || 4} coach recommendations, ordered by fit (best fi
           icf_level: coach.icf_level,
           practitioner_type: coach.practitioner_type,
           timezone: coach.timezone,
-          email: coach.email
+          email: coach.email,
+          bio: coach.bio
         } : null
       };
     });
