@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 
 interface CoachData {
+  id: string;
   photo_url: string;
   headline: string | null;
   gender: string;
@@ -12,6 +13,8 @@ interface CoachData {
   practitioner_type: string | null;
   timezone: string;
   email: string;
+  bio: string;
+  name: string;
 }
 
 interface Recommendation {
@@ -43,6 +46,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MatchResult | null>(null);
+  const [selectedCoachIds, setSelectedCoachIds] = useState<Set<string>>(new Set());
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const handleSubmit = async () => {
     if (!requestText.trim()) {
@@ -78,6 +84,53 @@ export default function Home() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && e.metaKey) {
       handleSubmit();
+    }
+  };
+
+  const toggleCoachSelection = (coachId: string) => {
+    setSelectedCoachIds(prev => {
+      const next = new Set(prev);
+      if (next.has(coachId)) {
+        next.delete(coachId);
+      } else {
+        next.add(coachId);
+      }
+      return next;
+    });
+    setShareUrl(null);
+  };
+
+  const handleGenerateLink = async () => {
+    if (selectedCoachIds.size === 0) return;
+
+    setSharing(true);
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coachIds: Array.from(selectedCoachIds),
+          requestSummary: result?.parsed_requirements ?
+            `${result.parsed_requirements.seniority_level} - ${result.parsed_requirements.key_focus_areas?.join(', ')}` : null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate link');
+      }
+
+      const { slug } = await response.json();
+      setShareUrl(`${window.location.origin}/share/${slug}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate share link');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const copyShareUrl = () => {
+    if (shareUrl) {
+      navigator.clipboard.writeText(shareUrl);
     }
   };
 
@@ -183,11 +236,74 @@ Example: Looking for a coach for a VP of Finance who is high IQ but lower EQ. St
               )}
             </div>
 
+            {/* Selection Actions */}
+            {result.recommendations.some(rec => rec.coach?.id) && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  {selectedCoachIds.size === 0 ? (
+                    'Select coaches to share with customer'
+                  ) : (
+                    <span className="font-medium text-gray-900">{selectedCoachIds.size} coach{selectedCoachIds.size !== 1 ? 'es' : ''} selected</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {shareUrl ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={shareUrl}
+                        className="text-sm border border-gray-300 rounded px-3 py-1.5 w-64 bg-gray-50"
+                      />
+                      <button
+                        onClick={copyShareUrl}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleGenerateLink}
+                      disabled={selectedCoachIds.size === 0 || sharing}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      {sharing ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        'Generate Share Link'
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Coach Cards */}
             <div className="space-y-4">
               {result.recommendations.map((rec, idx) => (
-                <div key={idx} className="bg-white rounded-lg shadow-sm border-l-4 border-l-blue-600 border border-gray-200 p-5">
+                <div
+                  key={idx}
+                  className={`bg-white rounded-lg shadow-sm border-l-4 border border-gray-200 p-5 cursor-pointer transition-colors ${
+                    rec.coach?.id && selectedCoachIds.has(rec.coach.id)
+                      ? 'border-l-green-600 bg-green-50/30 ring-2 ring-green-200'
+                      : 'border-l-blue-600'
+                  }`}
+                  onClick={() => rec.coach?.id && toggleCoachSelection(rec.coach.id)}
+                >
                   <div className="flex gap-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={rec.coach?.id ? selectedCoachIds.has(rec.coach.id) : false}
+                        onChange={() => rec.coach?.id && toggleCoachSelection(rec.coach.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                    </div>
                     {rec.coach?.photo_url ? (
                       <Image
                         src={rec.coach.photo_url}
