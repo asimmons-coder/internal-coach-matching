@@ -101,15 +101,25 @@ export default function Home() {
   };
 
   const handleGenerateLink = async () => {
-    if (selectedCoachIds.size === 0) return;
+    if (selectedCoachIds.size === 0 || !result) return;
 
     setSharing(true);
     try {
+      // Get selected recommendations with their AI-generated content
+      const selectedCoaches = result.recommendations
+        .filter(rec => rec.coach?.id && selectedCoachIds.has(rec.coach.id))
+        .map(rec => ({
+          id: rec.coach!.id,
+          name: rec.name,
+          rationale: rec.rationale,
+          key_strengths: rec.key_strengths,
+        }));
+
       const response = await fetch('/api/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          coachIds: Array.from(selectedCoachIds),
+          coaches: selectedCoaches,
           requestSummary: result?.parsed_requirements ?
             `${result.parsed_requirements.seniority_level} - ${result.parsed_requirements.key_focus_areas?.join(', ')}` : null
         })
