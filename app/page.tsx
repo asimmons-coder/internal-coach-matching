@@ -101,9 +101,14 @@ export default function Home() {
   };
 
   const handleGenerateLink = async () => {
-    if (selectedCoachIds.size === 0 || !result) return;
+    if (selectedCoachIds.size === 0 || !result) {
+      console.log('Early return - selectedCoachIds:', selectedCoachIds.size, 'result:', !!result);
+      return;
+    }
 
     setSharing(true);
+    setError(null);
+
     try {
       // Get selected recommendations with their AI-generated content
       const selectedCoaches = result.recommendations
@@ -115,6 +120,12 @@ export default function Home() {
           key_strengths: rec.key_strengths,
         }));
 
+      console.log('Selected coaches to share:', selectedCoaches);
+
+      if (selectedCoaches.length === 0) {
+        throw new Error('No coaches matched selection. Please try selecting again.');
+      }
+
       const response = await fetch('/api/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,13 +136,15 @@ export default function Home() {
         })
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to generate link');
+        throw new Error(data.error || 'Failed to generate link');
       }
 
-      const { slug } = await response.json();
-      setShareUrl(`${window.location.origin}/share/${slug}`);
+      setShareUrl(`${window.location.origin}/share/${data.slug}`);
     } catch (err) {
+      console.error('Share link error:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate share link');
     } finally {
       setSharing(false);
