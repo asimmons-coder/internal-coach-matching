@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/app/lib/supabase';
 import { nanoid } from 'nanoid';
 
+interface SharedCoach {
+  id: string;
+  name: string;
+  rationale: string;
+  key_strengths: string[];
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { coachIds, requestSummary } = await request.json();
+    const { coaches, requestSummary } = await request.json();
 
-    if (!coachIds || !Array.isArray(coachIds) || coachIds.length === 0) {
+    if (!coaches || !Array.isArray(coaches) || coaches.length === 0) {
       return NextResponse.json({ error: 'At least one coach must be selected' }, { status: 400 });
     }
 
@@ -16,7 +23,7 @@ export async function POST(request: NextRequest) {
       .from('shared_recommendations')
       .insert({
         slug,
-        coach_ids: coachIds,
+        coach_data: coaches as SharedCoach[],
         request_summary: requestSummary || null,
       });
 
