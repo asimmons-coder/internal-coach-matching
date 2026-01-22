@@ -100,7 +100,7 @@ export default async function SharePage({ params }: SharePageProps) {
                         alt={coach.name}
                         width={120}
                         height={120}
-                        className="w-28 h-28 rounded-full object-cover ring-4 ring-[#F0F3F7]"
+                        className="w-28 h-28 rounded-full object-cover object-top ring-4 ring-[#F0F3F7]"
                         unoptimized
                       />
                     ) : (
